@@ -14,5 +14,6 @@ public:
 	gboolean RemoveObject(DMXObject *pObject);
 private:
 	GtkWidget *pMenuBar;
+	GtkWidget *pMenu;
 };
 #endif
