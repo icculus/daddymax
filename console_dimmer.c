@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "dimmer.h"
 
 
@@ -57,7 +58,7 @@ static int getNumbers(char **tokens, double *numbers, int needNums)
 
     for (i = 0; i < needNums; i++)
     {
-        if tokens[i] == NULL)
+        if (tokens[i] == NULL)
         {
             fprintf(stderr, "Too few arguments.\n");
             return(-1);
@@ -100,13 +101,13 @@ static void parseCommand(int tokenCount, char **tokens)
     else if (strcasecmp(tokens[0], "set") == 0)
     {
         if (getNumbers(&tokens[1], numbers, 2) == 0)
-            rc = dimmer_set_channel(numbers[0], numbers[1]);
+            rc = dimmer_channel_set(numbers[0], numbers[1]);
     } /* else if */
 
     else if (strcasecmp(tokens[0], "fade") == 0)
     {
         if (getNumbers(&tokens[1], numbers, 3) == 0)
-            rc = dimmer_fade_channel(numbers[0], numbers[1], numbers[2]);
+            rc = dimmer_channel_fade(numbers[0], numbers[1], numbers[2]);
     } /* else if */
 
     else if (strcasecmp(tokens[0], "blackout") == 0)
@@ -122,7 +123,7 @@ static void parseCommand(int tokenCount, char **tokens)
     } /* else if */
 
     else  /* unknown command. */
-        fprintf("Unknown command: [%s].\n", tokens[0]);
+        fprintf(stderr, "Unknown command: [%s].\n", tokens[0]);
 
     if (rc != 0)
     {
@@ -145,7 +146,7 @@ int main(int argc, char **argv)
  *  interactive mode, or a one-shot command line deal...
  */
 {
-    if (dimmer_init() == -1)
+    if (dimmer_init(1) == -1)
         perror("dimmer_init() failed: ");
     else
     {
