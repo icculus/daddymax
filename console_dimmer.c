@@ -18,8 +18,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <readline.h>
+#include <history.h>
 #include "dimmer.h"
 
+#define VERSION "v0.1.0"
+
+static struct DimmerDeviceInfo devInfo;
+static struct DimmerSystemInfo sysInfo;
 
 static void inline displayHelp(void)
 /*
@@ -91,8 +97,9 @@ static void parseCommand(int tokenCount, char **tokens)
 {
     double numbers[5];
     int rc = 0;
+    int tmp;
 
-    if ((tokenCount <= 1) || (tokens == NULL) || (tokens[0] == NULL))
+    if ((tokenCount < 1) || (tokens == NULL) || (tokens[0] == NULL))
         return;
 
     if (strcasecmp(tokens[0], "help") == 0)
@@ -122,21 +129,95 @@ static void parseCommand(int tokenCount, char **tokens)
             rc = dimmer_set_grand_master((unsigned char) numbers[0]);
     } /* else if */
 
+    else if (strcasecmp(tokens[0], "askdev") == 0)
+    {
+        if (getNumbers(&tokens[1], numbers, 0) == 0)
+        {
+            rc = dimmer_query_device(&devInfo);
+            if (rc == -1)
+                fprintf(stderr, "error. (%d).\n", errno);
+            else
+            {
+                printf("(%d) channels, (%d) outputs, duplex %s.\n",
+                        devInfo.numChannels, devInfo.numOutputs,
+                        (devInfo.isDuplexed) ? "enabled" : "disabled");
+            } /* else */
+        } /* if */
+    } /* else if */
+
+    else if (strcasecmp(tokens[0], "asksys") == 0)
+    {
+        if (getNumbers(&tokens[1], numbers, 0) == 0)
+        {
+            rc = dimmer_query_system(&sysInfo);
+            if (rc == -1)
+                fprintf(stderr, "error. (%d).\n", errno);
+            else
+            {
+                printf("(%d) device modules available:\n", sysInfo.devCount);
+                    // !!! dimmer_device_name()...
+                //int devCount;
+                //int *devsAvailable;
+                //int activeDevID;
+            } /* else */
+        } /* if */
+    } /* else if */
+
     else  /* unknown command. */
         fprintf(stderr, "Unknown command: [%s].\n", tokens[0]);
 
     if (rc != 0)
     {
-        fprintf(stderr, "Command [%s] failed. rc == (%d) errno == (%d).\n",
-                                            tokens[0], rc, errno);
+        tmp = errno;
+        fprintf(stderr, "Command [%s] failed. rc == (%d)", tokens[0], rc);
+        errno = tmp;
+        perror("");
     } /* if */
 } /* parseCommand */
 
 
 static void interactiveMode(void)
 {
-    fprintf(stderr, "Interactive mode not yet written. printing help...\n\n");
-    displayHelp();
+    int getOut = 0;
+    char *inCmd = NULL;
+    char *tmp;
+    char *cmdToks[30];
+    int count;
+
+    printf("Console dimmer (%s) -=[INTERACTIVE MODE]=-\n", VERSION);
+
+    while (!getOut)
+    {
+        inCmd = readline("> ");
+        if (inCmd != NULL)
+        {
+            tmp = inCmd;
+            for (count = 0; (count < 30) && (inCmd != NULL); count++)
+            {
+                while (*inCmd == ' ')
+                    inCmd++;
+
+                cmdToks[count] = inCmd;
+                inCmd = strchr(inCmd, ' ');
+                if (inCmd != NULL)
+                {
+                    *inCmd = '\0';
+                    inCmd++;
+                } /* if */
+            } /* for */
+
+            cmdToks[count] = NULL;
+
+            if (cmdToks[0][0] != '\0')
+            {
+                if (strcasecmp(cmdToks[0], "quit") == 0)
+                    getOut = 1;
+                else
+                    parseCommand(count, cmdToks);
+            } /* if */
+            free(tmp);
+        } /* if */
+    } /* while */
 } /* interactiveMode */
 
 
@@ -147,13 +228,13 @@ int main(int argc, char **argv)
  */
 {
     if (dimmer_init(1) == -1)
-        perror("dimmer_init() failed: ");
+        perror("dimmer_init() failed");
     else
     {
         if (argc == 1)
             interactiveMode();
         else
-            parseCommand(argc, argv);
+            parseCommand(argc - 1, argv + 1);
     } /* else */
 
     return(0);
