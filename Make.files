@@ -1,0 +1,15 @@
+-suffix .cc
+
+@debug
+@release
+DMXObject
+DMXContainer
+Main
+MainWindow
+MainNotebook
+LightingBoard
+Stage
+Slider
+ChannelSlider
+Scene
+MainMenu
